@@ -1,115 +1,100 @@
-  import Chart from 'chart.js/auto';
-  
-  let chartInstance1 = null;
-  let chartInstance2 = null;
-  
-  export function afficherGraphique(amortissement) {
-      const labels = amortissement.map((_, index) => `Période ${index + 1}`);
-      const dataInterets = amortissement.map(({ interet }) => Math.round(interet));
-      const dataRemboursement = amortissement.map(({ remboursementMensuel }) => Math.round(remboursementMensuel));
-      const dataCapitalRestant = amortissement.map(({ capitalRestantDu }) => Math.round(capitalRestantDu));
-  
-      // Regrouper les données par année
-      const groupedData = amortissement.reduce((acc, curr, index) => {
-          const year = Math.floor(index / 12);
-          if (!acc[year]) {
-              acc[year] = { interet: 0, remboursementMensuel: 0 };
-          }
-          acc[year].interet += curr.interet;
-          acc[year].remboursementMensuel += curr.remboursementMensuel;
-          return acc;
-      }, []);
-  
-      const labelsByYear = groupedData.map((_, index) => `Année ${index + 1}`);
-      const dataInteretsByYear = groupedData.map(data => Math.round(data.interet));
-      const dataRemboursementByYear = groupedData.map(data => Math.round(data.remboursementMensuel));
-  
-      const ctx1 = document.getElementById('myChart1').getContext('2d');
-      const ctx2 = document.getElementById('myChart2').getContext('2d');
-  
-      // Détruire les graphiques existants s'ils existent
-      if (chartInstance1) {
-          chartInstance1.destroy();
-      }
-      if (chartInstance2) {
-          chartInstance2.destroy();
-      }
-  
-      // Créer le premier graphique pour les intérêts payés et les remboursements mensuels
-      chartInstance1 = new Chart(ctx1, {
-          type: 'bar',
-          data: {
-              labels: labelsByYear,
-              datasets: [
-                  {
-                      label: 'Intérêts Payés',
-                      data: dataInteretsByYear,
-                      backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                      borderColor: 'rgba(255, 99, 132, 1)',
-                      borderWidth: 1,
-                  },
-                  {
-                      label: 'Remboursement Mensuel',
-                      data: dataRemboursementByYear,
-                      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                      borderColor: 'rgba(54, 162, 235, 1)',
-                      borderWidth: 1,
-                  },
-              ],
-          },
-          options: {
-              responsive: true,
-              scales: {
-                  x: {
-                      title: {
-                          display: true,
-                          text: 'Année',
-                      },
-                  },
-                  y: {
-                      title: {
-                          display: true,
-                          text: 'Montant (€)',
-                      },
-                  },
-              },
-          },
-      });
-  
-      // Créer le deuxième graphique pour le capital restant
-      chartInstance2 = new Chart(ctx2, {
-          type: 'line',
-          data: {
-              labels: labels,
-              datasets: [
-                  {
-                      label: 'Capital Restant',
-                      data: dataCapitalRestant,
-                      borderColor: 'rgba(75, 192, 192, 1)',
-                      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                      fill: false,
-                  },
-              ],
-          },
-          options: {
-              responsive: true,
-              scales: {
-                  x: {
-                      title: {
-                          display: true,
-                          text: 'Période',
-                      },
-                  },
-                  y: {
-                      title: {
-                          display: true,
-                          text: 'Montant (€)',
-                      },
-                  },
-              },
-          },
-      });
-  }
+import Chart from 'chart.js/auto';
+import {interetTotal, anneesPourRembourserInterets } from './calcul.mjs';
+
+let chartInstance1 = null;
+let chartInstance2 = null;
+
+export function afficherGraphique(amortissement) {
+    const labels = amortissement.map((_, index) => `Période ${index + 1}`);
+    const dataInterets = amortissement.map(({ interet }) => Math.round(interet));
+    const dataRemboursement = amortissement.map(({ remboursementMensuel }) => Math.round(remboursementMensuel));
+    const dataCapitalRestant = amortissement.map(({ capitalRestantDu }) => Math.round(capitalRestantDu));
+
+    // Regrouper les données par année
+    const groupedData = amortissement.reduce((acc, curr, index) => {
+        const year = Math.floor(index / 12);
+        if (!acc[year]) {
+            acc[year] = { interet: 0, remboursementMensuel: 0 };
+        }
+        acc[year].interet += curr.interet;
+        acc[year].remboursementMensuel += curr.remboursementMensuel;
+        return acc;
+    }, []);
+
+    const labelsByYear = groupedData.map((_, index) => `Année ${index + 1}`);
+    const dataInteretsByYear = groupedData.map(data => Math.round(data.interet));
+    const dataRemboursementByYear = groupedData.map(data => Math.round(data.remboursementMensuel));
+
+    const ctx1 = document.getElementById('myChart1').getContext('2d');
+    const ctx2 = document.getElementById('myChart2').getContext('2d');
+
+    // Calculer le total des intérêts
+    const totalInterets = interetTotal(amortissement);
+
+    // Définir les couleurs de fond pour le graphique du capital restant
+    const backgroundColors = dataCapitalRestant.map((value, index) => {
+        const totalPaid = dataInterets.slice(0, index + 1).reduce((acc, curr) => acc + curr, 0);
+        return totalPaid <= totalInterets ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 0, 255, 0.2)';
+    });
+
+    if (chartInstance1) {
+        chartInstance1.destroy();
+    }
+    chartInstance1 = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Capital Restant',
+                data: dataCapitalRestant,
+                backgroundColor: backgroundColors,
+                borderColor: 'rgba(0, 0, 255, 1)',
+                borderWidth: 1,
+                fill: true
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    if (chartInstance2) {
+        chartInstance2.destroy();
+    }
+    chartInstance2 = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: labelsByYear,
+            datasets: [
+                {
+                    label: 'Intérêts par Année',
+                    data: dataInteretsByYear,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Remboursement Mensuel par Année',
+                    data: dataRemboursementByYear,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
   
   export function remplirTableau(amortissement) {
       let html = `<thead>

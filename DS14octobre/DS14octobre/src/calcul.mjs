@@ -34,3 +34,27 @@ export let calculAmortissement = (montant, tauxMensuel, mois, annee) => {
       return {remboursementMensuel, amortissementY , amortissementM};
   };
 
+  export function interetTotal(amortissement) {
+    return amortissement.reduce((acc, { interet }) => acc + interet, 0);
+  }
+
+  export function anneesPourRembourserInterets(montant, tauxMensuel, remboursementMensuel) {
+    let balance = montant;
+    let totalInteret = 0;
+    let annees = 0;
+
+    while (balance > 0) {
+      let interetAnnuel = 0;
+      for (let m = 0; m < 12; m++) {
+        let interetMensuel = balance * tauxMensuel;
+        interetAnnuel += interetMensuel;
+        balance -= (remboursementMensuel - interetMensuel);
+        if (balance <= 0) break;
+      }
+      totalInteret += interetAnnuel;
+      annees++;
+      if (balance <= 0) break;
+    }
+
+    return annees;
+  }

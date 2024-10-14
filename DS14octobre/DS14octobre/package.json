@@ -10,5 +10,8 @@
   },
   "devDependencies": {
     "vite": "^5.4.8"
+  },
+  "dependencies": {
+    "chartjs-plugin-annotation": "^3.0.1"
   }
 }
